@@ -61,10 +61,11 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
     )
     df_filtered = df[mask]
 
-    df_tv  = df_filtered.query("Platform == 'TV'")
-    df_ott = df_filtered.query("Platform == 'OTT'")
-    df_smm = df_filtered.query("Platform == 'SMM' and Channel != 'Youtube'")
-    df_yt  = df_filtered.query("Platform == 'SMM' and Channel == 'Youtube'")
+    df_tv      = df_filtered.query("Platform == 'TV'")
+    df_ott     = df_filtered.query("Platform == 'OTT'")
+    df_smm     = df_filtered.query("Platform == 'SMM' and Channel != 'Youtube'")
+    df_yt      = df_filtered.query("Platform == 'SMM' and Channel == 'Youtube'")
+    df_smm_all = df_filtered.query("Platform == 'SMM'")   # ✅ includes Youtube — for Totals
 
     # ── TV channel pivot (rows = channels, cols = metrics)
     tv_channel = (
@@ -80,8 +81,8 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
         .reset_index()
     )
 
-    # ✅ Fix — use df_tv which is already filtered by partner + country + month
-    tv_spots   = df_tv[df_tv["Metric"].isin(["standard spots", "live ad spots"])]["Value"].sum()
+    # ── TV calculated metrics — filtered by partner + country + month
+    tv_spots   = df_tv[df_tv["Metric"].isin(["standard spots",         "live ad spots"])        ]["Value"].sum()
     tv_seconds = df_tv[df_tv["Metric"].isin(["standard spots seconds", "live ad spots seconds"])]["Value"].sum()
 
     tv_summary_other = (
@@ -109,28 +110,28 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
         .reset_index()
     )
 
-    # ── SMM channel pivot (rows = channels, cols = metrics)
+    # ── SMM channel pivot — excludes Youtube (for SMM Summary slide)
     smm_channel = (
         df_smm[df_smm["Metric"].isin(SMM_METRICS)]
         .pivot_table(index="Channel", columns="Metric", values="Value", aggfunc="sum")
         .reset_index()
     )
 
-    # ── SMM totals (no channel breakdown)
+    # ── SMM totals — includes Youtube (for Totals slide)
     smm_totals = (
-        df_smm[df_smm["Metric"].isin(SMM_METRICS)]
+        df_smm_all[df_smm_all["Metric"].isin(SMM_METRICS)]
         .pivot_table(index="Metric", values="Value", aggfunc="sum")
         .reset_index()
     )
 
-    # ── YouTube rubric pivot (rows = rubrics, cols = metrics)
+    # ── YouTube rubric pivot — Youtube only (for YouTube slide)
     yt_rubric = (
         df_yt[df_yt["Metric"].isin(SMM_METRICS)]
         .pivot_table(index="Rubric", columns="Metric", values="Value", aggfunc="sum")
         .reset_index()
     )
 
-    # ── Combined totals (TV + OTT + SMM) for Totals slide
+    # ── Combined totals (TV + OTT + SMM including Youtube)
     tv_totals_tagged  = tv_totals.copy();  tv_totals_tagged["Platform"]  = "TV"
     ott_tagged        = ott.copy();        ott_tagged["Platform"]        = "OTT"
     smm_totals_tagged = smm_totals.copy(); smm_totals_tagged["Platform"] = "SMM"
@@ -146,4 +147,9 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
         "smm_totals":   smm_totals,
         "yt_rubric":    yt_rubric,
         "all_totals":   all_totals,
+        # ── Platform flags
+        "has_tv":       not df_tv.empty,
+        "has_ott":      not df_ott.empty,
+        "has_smm":      not df_smm.empty,
+        "has_yt":       not df_yt.empty,
     }

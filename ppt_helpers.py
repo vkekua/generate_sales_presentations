@@ -174,12 +174,17 @@ def build_youtube_rubric_cards(slide, df_pivot, metrics_list: list):
 
 def build_totals_slide(slide, df_all_totals, slide_w):
     """
-    Build Totals slide with one fitted row per platform (TV, OTT, SMM).
-    Cards auto-scale width to always fit in one row.
+    Build Totals slide with wrapped rows per platform.
+    Platform label on the left above the KPI cards block.
     """
-    BLOCK_GAP = Inches(0.2)
-    HEADER_H  = Inches(0.4)
-    current_top = START_TOP
+    BLOCK_GAP    = Inches(0.3)
+    HEADER_H     = Inches(0.4)
+    ROW_GAP      = Inches(0.1)
+    current_top  = START_TOP
+
+    # Max cards per row based on slide width
+    available_width = slide_w - (START_LEFT * 2)
+    max_per_row     = int(available_width // (CARD_W + CARD_GAP_X))
 
     for platform in ["TV", "OTT", "SMM"]:
         df_platform = df_all_totals[df_all_totals["Platform"] == platform].reset_index(drop=True)
@@ -192,26 +197,23 @@ def build_totals_slide(slide, df_all_totals, slide_w):
         if not valid_rows:
             continue
 
-        # Platform header
-        from pptx.util import Inches as _Inches
-        box = slide.shapes.add_textbox(_Inches(0), current_top, slide_w, HEADER_H)
-        tf = box.text_frame
+        # Platform label — left aligned, above the cards
+        box = slide.shapes.add_textbox(START_LEFT, current_top, Inches(3), HEADER_H)
+        tf  = box.text_frame
         tf.word_wrap = False
         tf.text = platform
-        tf.paragraphs[0].alignment = PP_ALIGN.CENTER
-        tf.paragraphs[0].font.size = Pt(18)
+        tf.paragraphs[0].alignment = PP_ALIGN.LEFT
+        tf.paragraphs[0].font.size = Pt(16)
         tf.paragraphs[0].font.bold = True
         tf.paragraphs[0].font.color.rgb = HEADER_COLOR
         current_top += HEADER_H
 
-        # Fitted single row
-        n               = len(valid_rows)
-        available_width = slide_w - (START_LEFT * 2)
-        total_gaps      = CARD_GAP_X * (n - 1)
-        fitted_card_w   = (available_width - total_gaps) / n
+        # Split into rows of max_per_row and render each row
+        chunks = [valid_rows[i:i + max_per_row] for i in range(0, len(valid_rows), max_per_row)]
+        for chunk in chunks:
+            for col_idx, (metric, value) in enumerate(chunk):
+                left = START_LEFT + col_idx * (CARD_W + CARD_GAP_X)
+                add_card(slide, left, current_top, CARD_W, metric, value, font_size=11)
+            current_top += CARD_H + ROW_GAP
 
-        for col_idx, (metric, value) in enumerate(valid_rows):
-            left = START_LEFT + col_idx * (fitted_card_w + CARD_GAP_X)
-            add_card(slide, left, current_top, fitted_card_w, metric, value, font_size=11)
-
-        current_top += CARD_H + BLOCK_GAP
+        current_top += BLOCK_GAP
