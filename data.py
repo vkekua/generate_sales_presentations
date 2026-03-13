@@ -61,6 +61,9 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
     )
     df_filtered = df[mask]
 
+    if df_filtered.empty:
+        return None
+
     df_tv      = df_filtered.query("Platform == 'TV'")
     df_ott     = df_filtered.query("Platform == 'OTT'")
     df_smm     = df_filtered.query("Platform == 'SMM' and Channel != 'Youtube'")
@@ -148,8 +151,8 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
         "yt_rubric":    yt_rubric,
         "all_totals":   all_totals,
         # ── Platform flags
-        "has_tv":       not df_tv.empty,
-        "has_ott":      not df_ott.empty,
-        "has_smm":      not df_smm.empty,
-        "has_yt":       not df_yt.empty,
+        "has_tv":  len(tv_channel) > 0 or len(tv_other) > 0,
+        "has_ott": len(ott) > 0,
+        "has_smm": len(smm_channel) > 0,
+        "has_yt":  len(yt_rubric) > 0
     }

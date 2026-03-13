@@ -80,7 +80,8 @@ def add_card(slide, left, top, width, metric: str, value, font_size: int):
     """Add a single KPI card to a slide."""
     card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, CARD_H)
     style_card(card)
-    card.text_frame.text = f"{metric}\n{value}"
+    formatted_value = f"{int(value):,}" if is_valid_value(value) else "0"
+    card.text_frame.text = f"{metric}\n{formatted_value}"
     style_text_frame(card.text_frame, font_size)
 
 

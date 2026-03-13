@@ -14,6 +14,9 @@ def main():
 
     print(f"🔁 Building presentations for {len(partners)} row(s)...\n")
 
+    saved = 0
+    skipped = 0
+
     for _, partner_row in partners.iterrows():
         partner = partner_row["Partner"]
         country = partner_row["Country"]
@@ -25,6 +28,11 @@ def main():
         print(f"  ⏳ {partner} — {country} — {month_label}")
 
         data = prepare_partner_data(df, partner, country, month_raw)
+
+        if data is None:
+            print(f"  ⚠️  No data — skipping {partner} — {country} — {month_label}")
+            skipped += 1
+            continue
 
         safe_partner = partner.replace(" ", "_")
         safe_country = country.replace(" ", "_")
@@ -38,10 +46,11 @@ def main():
             output_path=output_path,
         )
 
-        print(f"  ✅ Saved: {output_path}")
+        print(f"  ✅ Saved: {output_path}") 
+        saved += 1
 
-    print(f"\n🎉 Done! {len(partners)} file(s) saved to /{OUTPUT_DIR}/")
-
-
+    print(f"\n🎉 Done! {saved} file(s) saved to /{OUTPUT_DIR}/")
+    print(f"⚠️  {skipped} partner(s) skipped due to missing data.")
+    
 if __name__ == "__main__":
     main()
