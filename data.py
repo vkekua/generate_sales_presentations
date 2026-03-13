@@ -45,15 +45,26 @@ def load_partners(df: pd.DataFrame) -> pd.DataFrame:
 # ──────────────────────────────────────────────
 # Per-partner data preparation
 # ──────────────────────────────────────────────
-def prepare_partner_data(df: pd.DataFrame, partner: str) -> dict:
+def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) -> dict:
     """
-    Build all pivot dataframes needed for one partner's presentation.
-    Returns a dict of named dataframes.
+    Build all pivot dataframes needed for one partner/country/month combination.
     """
-    df_tv  = df.query("Platform == 'TV'  and Partner == @partner")
-    df_ott = df.query("Platform == 'OTT' and Partner == @partner")
-    df_smm = df.query("Platform == 'SMM' and Partner == @partner and Channel != 'Youtube'")
-    df_yt  = df.query("Platform == 'SMM' and Partner == @partner and Channel == 'Youtube'")
+    month_start = pd.Timestamp(month).to_period("M").to_timestamp()
+    month_end   = month_start + pd.offsets.MonthEnd(0)
+
+    # Filter by partner + country + month
+    mask = (
+        (df["Partner"] == partner) &
+        (df["Country"] == country) &
+        (df["Date"] >= month_start) &
+        (df["Date"] <= month_end)
+    )
+    df_filtered = df[mask]
+
+    df_tv  = df_filtered.query("Platform == 'TV'")
+    df_ott = df_filtered.query("Platform == 'OTT'")
+    df_smm = df_filtered.query("Platform == 'SMM' and Channel != 'Youtube'")
+    df_yt  = df_filtered.query("Platform == 'SMM' and Channel == 'Youtube'")
 
     # ── TV channel pivot (rows = channels, cols = metrics)
     tv_channel = (
@@ -69,9 +80,9 @@ def prepare_partner_data(df: pd.DataFrame, partner: str) -> dict:
         .reset_index()
     )
 
-    # ── TV calculated metrics
-    tv_spots   = df[df["Metric"].isin(["standard spots",         "live ad spots"])        ]["Value"].sum()
-    tv_seconds = df[df["Metric"].isin(["standard spots seconds", "live ad spots seconds"])]["Value"].sum()
+    # ✅ Fix — use df_tv which is already filtered by partner + country + month
+    tv_spots   = df_tv[df_tv["Metric"].isin(["standard spots", "live ad spots"])]["Value"].sum()
+    tv_seconds = df_tv[df_tv["Metric"].isin(["standard spots seconds", "live ad spots seconds"])]["Value"].sum()
 
     tv_summary_other = (
         df_tv[df_tv["Metric"].isin(TV_SUMMARY_METRICS)]
