@@ -31,7 +31,7 @@ ott_metrics = [
 ]
 
 smm_metrics = [
-    'posts count',
+    'post count',
     'post impressions',
     'video post views',
     'video count',

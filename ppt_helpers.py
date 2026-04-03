@@ -106,35 +106,28 @@ def build_channel_kpi_cards(slide, df_pivot, metrics_list: list):
             visible_j += 1
 
 def build_smm_channel_cards(slide, df_pivot, metrics_list: list):
-    """
-    Build SMM channel rubric rows.
-    2 channels: stacked vertically (full width).
-    3-4 channels: 2x2 grid, slide split into 4 equal quadrants.
-    """
     channels = list(df_pivot.groupby("Channel", sort=False))
     n_channels = len(channels)
 
-    # Slide dimensions (standard 13.333 x 7.5 inches)
     SLIDE_W = Inches(13.333)
     SLIDE_H = Inches(7.5)
-
     HALF_W = SLIDE_W / 2
     HALF_H = SLIDE_H / 2
-
     PADDING = Inches(0.3)
 
     if n_channels <= 2:
         _draw_channel_column(slide, channels, metrics_list,
                              left_offset=START_LEFT, top_offset=START_TOP,
-                             rubric_w=RUBRIC_LABEL_W)
+                             available_width=SLIDE_W - START_LEFT - PADDING)
     else:
-        # 2x2 grid positions: (col, row)
         positions = [
-            (PADDING, PADDING),                          # top-left
-            (HALF_W + PADDING, PADDING),                 # top-right
-            (PADDING, HALF_H + PADDING),                 # bottom-left
-            (HALF_W + PADDING, HALF_H + PADDING),        # bottom-right
+            (PADDING, PADDING),
+            (HALF_W + PADDING, PADDING),
+            (PADDING, HALF_H + PADDING),
+            (HALF_W + PADDING, HALF_H + PADDING),
         ]
+
+        available_width = HALF_W - 2 * PADDING
 
         for idx, (channel_name, group) in enumerate(channels):
             if idx >= 4:
@@ -142,69 +135,91 @@ def build_smm_channel_cards(slide, df_pivot, metrics_list: list):
             left, top = positions[idx]
             _draw_channel_quadrant(slide, channel_name, group, metrics_list,
                                    left_offset=left, top_offset=top,
-                                   rubric_w=Inches(0.8))
+                                   available_width=available_width)
+
+
+def _calc_card_dimensions(available_width, max_cards):
+    """
+    Dynamically calculate rubric width, card width and gaps
+    to fit within available_width.
+    """
+    rubric_w = Inches(0.7)
+    rubric_gap = Inches(0.08)
+    card_gap = Inches(0.08)
+
+    remaining = available_width - rubric_w - rubric_gap
+    if max_cards > 1:
+        remaining -= (max_cards - 1) * card_gap
+
+    card_w = remaining / max(max_cards, 1)
+
+    # Clamp card width
+    card_w = min(card_w, Inches(2.0))
+    card_w = max(card_w, Inches(0.9))
+
+    return rubric_w, rubric_gap, card_w, card_gap
+
+
+def _get_max_visible_cards(group, metrics_list):
+    """Count the maximum number of visible cards across all rows."""
+    max_cards = 0
+    for _, row in group.iterrows():
+        count = sum(1 for m in metrics_list if is_valid_value(row.get(m, 0)))
+        max_cards = max(max_cards, count)
+    return max_cards
 
 
 def _draw_channel_quadrant(slide, channel_name, group, metrics_list,
-                           left_offset, top_offset, rubric_w=None):
-    """
-    Draw a single channel block in its quadrant.
-    """
-    if rubric_w is None:
-        rubric_w = RUBRIC_LABEL_W
+                           left_offset, top_offset, available_width):
+    max_cards = _get_max_visible_cards(group, metrics_list)
+    rubric_w, rubric_gap, card_w, card_gap = _calc_card_dimensions(available_width, max_cards)
 
     current_top = top_offset
 
     # Channel header
-    box = slide.shapes.add_textbox(left_offset, current_top, Inches(5), Inches(0.5))
+    box = slide.shapes.add_textbox(left_offset, current_top, available_width, Inches(0.45))
     tf = box.text_frame
     tf.text = channel_name
-    tf.paragraphs[0].font.size = Pt(20)
+    tf.paragraphs[0].font.size = Pt(18)
     tf.paragraphs[0].font.bold = True
     tf.paragraphs[0].font.color.rgb = HEADER_COLOR
 
-    current_top += Inches(0.5)
+    current_top += Inches(0.45)
 
     for _, row in group.iterrows():
-        # Content label
         rubric_box = slide.shapes.add_textbox(left_offset, current_top, rubric_w, CARD_H)
         tf = rubric_box.text_frame
         tf.word_wrap = True
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
         tf.text = row["Content"]
-        tf.paragraphs[0].font.size = Pt(11)
+        tf.paragraphs[0].font.size = Pt(10)
         tf.paragraphs[0].font.bold = True
         tf.paragraphs[0].font.color.rgb = TEXT_COLOR
 
-        cards_start_left = left_offset + rubric_w + RUBRIC_GAP
+        cards_start_left = left_offset + rubric_w + rubric_gap
         visible_j = 0
         for metric in metrics_list:
             value = row.get(metric, 0)
             if not is_valid_value(value):
                 continue
-            card_left = cards_start_left + visible_j * (CARD_W + CARD_GAP_X)
-            add_card(slide, card_left, current_top, CARD_W, metric, value, font_size=12)
+            card_left = cards_start_left + visible_j * (card_w + card_gap)
+            add_card(slide, card_left, current_top, card_w, metric, value, font_size=10)
             visible_j += 1
 
-        current_top += CARD_H + Inches(0.15)
+        current_top += CARD_H + Inches(0.12)
+
+    return current_top
 
 
-def _draw_channel_column(slide, channels, metrics_list, left_offset, top_offset, rubric_w=None):
-    """
-    Draw channels stacked vertically (for 2 or fewer channels).
-    """
-    if rubric_w is None:
-        rubric_w = RUBRIC_LABEL_W
-
+def _draw_channel_column(slide, channels, metrics_list, left_offset, top_offset, available_width):
     current_top = top_offset
 
     for channel_name, group in channels:
-        _draw_channel_quadrant(slide, channel_name, group, metrics_list,
-                               left_offset=left_offset, top_offset=current_top,
-                               rubric_w=rubric_w)
-
-        row_count = len(group)
-        current_top += Inches(0.5) + row_count * (CARD_H + Inches(0.15)) + Inches(0.2)
+        current_top = _draw_channel_quadrant(
+            slide, channel_name, group, metrics_list,
+            left_offset=left_offset, top_offset=current_top,
+            available_width=available_width)
+        current_top += Inches(0.2)
 
 
 def build_kpi_cards_grid(slide, df_pivot, slide_w, slide_h):

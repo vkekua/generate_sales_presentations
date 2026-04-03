@@ -72,7 +72,7 @@ OTT_METRICS = [
 ]
 
 SMM_METRICS = [
-    'posts count',
+    'post count',
     'post impressions',
     'video post views',
     'video count',
