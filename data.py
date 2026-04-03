@@ -116,7 +116,7 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
     # ── SMM channel pivot — excludes Youtube (for SMM Summary slide)
     smm_channel = (
         df_smm[df_smm["Metric"].isin(SMM_METRICS)]
-        .pivot_table(index="Channel", columns="Metric", values="Value", aggfunc="sum")
+        .pivot_table(index=["Channel", "Content"] , columns="Metric", values="Value", aggfunc="sum")
         .reset_index()
     )
 
@@ -130,7 +130,7 @@ def prepare_partner_data(df: pd.DataFrame, partner: str, country: str, month) ->
     # ── YouTube rubric pivot — Youtube only (for YouTube slide)
     yt_rubric = (
         df_yt[df_yt["Metric"].isin(SMM_METRICS)]
-        .pivot_table(index="Rubric", columns="Metric", values="Value", aggfunc="sum")
+        .pivot_table(index="Content", columns="Metric", values="Value", aggfunc="sum")
         .reset_index()
     )
 

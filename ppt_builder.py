@@ -10,6 +10,7 @@ from ppt_helpers import (
     add_centered_textbox,
     build_channel_kpi_cards,
     build_kpi_cards_grid,
+    build_smm_channel_cards,
     build_youtube_rubric_cards,
     build_totals_slide,
     is_valid_value,
@@ -93,6 +94,7 @@ def build_presentation(partner: str, country: str, month: str, data: dict, outpu
     # OTT section — check pivoted dataframe directly
     # ──────────────────────────────────────────────
     if _df_has_data(data["ott"]):
+        print("ott data exists")
         title_slide("OTT REPORT")
         build_kpi_cards_grid(copy(), data["ott"], SLIDE_W, SLIDE_H)
 
@@ -106,7 +108,7 @@ def build_presentation(partner: str, country: str, month: str, data: dict, outpu
         title_slide("SOCIAL MEDIA REPORT")
 
         if smm_has_data:
-            build_channel_kpi_cards(copy(), data["smm_channel"], SMM_METRICS)
+            build_smm_channel_cards(copy(), data["smm_channel"], SMM_METRICS)
 
         if yt_has_data:
             build_youtube_rubric_cards(copy(), data["yt_rubric"], SMM_METRICS)

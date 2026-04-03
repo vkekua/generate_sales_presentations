@@ -105,6 +105,107 @@ def build_channel_kpi_cards(slide, df_pivot, metrics_list: list):
             add_card(slide, left, top, CARD_W, metric, value, font_size=14)
             visible_j += 1
 
+def build_smm_channel_cards(slide, df_pivot, metrics_list: list):
+    """
+    Build SMM channel rubric rows.
+    2 channels: stacked vertically (full width).
+    3-4 channels: 2x2 grid, slide split into 4 equal quadrants.
+    """
+    channels = list(df_pivot.groupby("Channel", sort=False))
+    n_channels = len(channels)
+
+    # Slide dimensions (standard 13.333 x 7.5 inches)
+    SLIDE_W = Inches(13.333)
+    SLIDE_H = Inches(7.5)
+
+    HALF_W = SLIDE_W / 2
+    HALF_H = SLIDE_H / 2
+
+    PADDING = Inches(0.3)
+
+    if n_channels <= 2:
+        _draw_channel_column(slide, channels, metrics_list,
+                             left_offset=START_LEFT, top_offset=START_TOP,
+                             rubric_w=RUBRIC_LABEL_W)
+    else:
+        # 2x2 grid positions: (col, row)
+        positions = [
+            (PADDING, PADDING),                          # top-left
+            (HALF_W + PADDING, PADDING),                 # top-right
+            (PADDING, HALF_H + PADDING),                 # bottom-left
+            (HALF_W + PADDING, HALF_H + PADDING),        # bottom-right
+        ]
+
+        for idx, (channel_name, group) in enumerate(channels):
+            if idx >= 4:
+                break
+            left, top = positions[idx]
+            _draw_channel_quadrant(slide, channel_name, group, metrics_list,
+                                   left_offset=left, top_offset=top,
+                                   rubric_w=Inches(0.8))
+
+
+def _draw_channel_quadrant(slide, channel_name, group, metrics_list,
+                           left_offset, top_offset, rubric_w=None):
+    """
+    Draw a single channel block in its quadrant.
+    """
+    if rubric_w is None:
+        rubric_w = RUBRIC_LABEL_W
+
+    current_top = top_offset
+
+    # Channel header
+    box = slide.shapes.add_textbox(left_offset, current_top, Inches(5), Inches(0.5))
+    tf = box.text_frame
+    tf.text = channel_name
+    tf.paragraphs[0].font.size = Pt(20)
+    tf.paragraphs[0].font.bold = True
+    tf.paragraphs[0].font.color.rgb = HEADER_COLOR
+
+    current_top += Inches(0.5)
+
+    for _, row in group.iterrows():
+        # Content label
+        rubric_box = slide.shapes.add_textbox(left_offset, current_top, rubric_w, CARD_H)
+        tf = rubric_box.text_frame
+        tf.word_wrap = True
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        tf.text = row["Content"]
+        tf.paragraphs[0].font.size = Pt(11)
+        tf.paragraphs[0].font.bold = True
+        tf.paragraphs[0].font.color.rgb = TEXT_COLOR
+
+        cards_start_left = left_offset + rubric_w + RUBRIC_GAP
+        visible_j = 0
+        for metric in metrics_list:
+            value = row.get(metric, 0)
+            if not is_valid_value(value):
+                continue
+            card_left = cards_start_left + visible_j * (CARD_W + CARD_GAP_X)
+            add_card(slide, card_left, current_top, CARD_W, metric, value, font_size=12)
+            visible_j += 1
+
+        current_top += CARD_H + Inches(0.15)
+
+
+def _draw_channel_column(slide, channels, metrics_list, left_offset, top_offset, rubric_w=None):
+    """
+    Draw channels stacked vertically (for 2 or fewer channels).
+    """
+    if rubric_w is None:
+        rubric_w = RUBRIC_LABEL_W
+
+    current_top = top_offset
+
+    for channel_name, group in channels:
+        _draw_channel_quadrant(slide, channel_name, group, metrics_list,
+                               left_offset=left_offset, top_offset=current_top,
+                               rubric_w=rubric_w)
+
+        row_count = len(group)
+        current_top += Inches(0.5) + row_count * (CARD_H + Inches(0.15)) + Inches(0.2)
+
 
 def build_kpi_cards_grid(slide, df_pivot, slide_w, slide_h):
     """
@@ -157,7 +258,7 @@ def build_youtube_rubric_cards(slide, df_pivot, metrics_list: list):
         tf = rubric_box.text_frame
         tf.word_wrap = True
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        tf.text = row["Rubric"]
+        tf.text = row["Content"]
         tf.paragraphs[0].font.size = Pt(11)
         tf.paragraphs[0].font.bold = True
         tf.paragraphs[0].font.color.rgb = TEXT_COLOR
