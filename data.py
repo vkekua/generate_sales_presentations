@@ -9,8 +9,8 @@ from config import (
 # ──────────────────────────────────────────────
 # Load & clean master dataframe
 # ──────────────────────────────────────────────
-def load_data() -> pd.DataFrame:
-    sheets = pd.read_excel(INPUT_FILE, sheet_name=["TV", "SMM", "OTT"])
+def load_data(input_file: str = None) -> pd.DataFrame:
+    sheets = pd.read_excel(input_file or INPUT_FILE, sheet_name=["TV", "SMM", "OTT"])
     df = pd.concat(sheets.values(), ignore_index=True)
 
     cols = ["Date", "Partner", "Country", "Content", "Platform", "Channel", "Metric", "Value", "Rubric"]
@@ -36,9 +36,9 @@ def load_data() -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def load_partners(df: pd.DataFrame) -> pd.DataFrame:
+def load_partners(df: pd.DataFrame, input_file: str = None) -> pd.DataFrame:
     """Return partners where CreatePPT is True."""
-    partners = pd.read_excel(INPUT_FILE, sheet_name="Partners")
+    partners = pd.read_excel(input_file or INPUT_FILE, sheet_name="Partners")
     return partners[partners["CreatePPT"] == True].reset_index(drop=True)
 
 

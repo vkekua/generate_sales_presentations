@@ -2,3 +2,5 @@ pandas==3.0.1
 openpyxl==3.1.5
 python-pptx==1.0.2
 lxml==6.0.2
+flask>=3.0
+waitress>=3.0

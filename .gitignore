@@ -5,3 +5,8 @@ output/
 *.xlsx
 *.pptx
 read_excel.ipynb
+cert.pem
+key.pem
+build/
+dist/
+*.spec

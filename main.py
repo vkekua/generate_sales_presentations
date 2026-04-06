@@ -2,41 +2,34 @@ import os
 import pandas as pd
 from data import load_data, load_partners, prepare_partner_data
 from ppt_builder import build_presentation
-from config import OUTPUT_DIR
+from config import INPUT_FILE, OUTPUT_DIR
 
 
-def main():
-    print("📥 Loading data...")
-    df       = load_data()
-    partners = load_partners(df)
+def generate_all(input_file: str, output_dir: str) -> list[str]:
+    """Run the full pipeline. Returns list of generated .pptx file paths."""
+    df       = load_data(input_file)
+    partners = load_partners(df, input_file)
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
-    print(f"🔁 Building presentations for {len(partners)} row(s)...\n")
-
-    saved = 0
-    skipped = 0
+    generated = []
 
     for _, partner_row in partners.iterrows():
         partner = partner_row["Partner"]
         country = partner_row["Country"]
 
         month_raw   = pd.to_datetime(partner_row["Month"])
-        month_label = month_raw.strftime("%B %Y")   # e.g. "March 2026" — used on slide
-        month_file  = month_raw.strftime("%Y-%m")   # e.g. "2026-03"    — used in filename
-
-        print(f"  ⏳ {partner} — {country} — {month_label}")
+        month_label = month_raw.strftime("%B %Y")
+        month_file  = month_raw.strftime("%Y-%m")
 
         data = prepare_partner_data(df, partner, country, month_raw)
 
         if data is None:
-            print(f"  ⚠️  No data — skipping {partner} — {country} — {month_label}")
-            skipped += 1
             continue
 
         safe_partner = partner.replace(" ", "_")
         safe_country = country.replace(" ", "_")
-        output_path  = os.path.join(OUTPUT_DIR, f"{safe_partner}_{safe_country}_{month_file}.pptx")
+        output_path  = os.path.join(output_dir, f"{safe_partner}_{safe_country}_{month_file}.pptx")
 
         build_presentation(
             partner=partner,
@@ -46,11 +39,16 @@ def main():
             output_path=output_path,
         )
 
-        print(f"  ✅ Saved: {output_path}") 
-        saved += 1
+        generated.append(output_path)
 
-    print(f"\n🎉 Done! {saved} file(s) saved to /{OUTPUT_DIR}/")
-    print(f"⚠️  {skipped} partner(s) skipped due to missing data.")
-    
+    return generated
+
+
+def main():
+    print("Loading data...")
+    generated = generate_all(INPUT_FILE, OUTPUT_DIR)
+    print(f"\nDone! {len(generated)} file(s) saved to /{OUTPUT_DIR}/")
+
+
 if __name__ == "__main__":
     main()
