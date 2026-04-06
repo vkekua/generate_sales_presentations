@@ -5,3 +5,4 @@ output/
 *.xlsx
 *.pptx
 read_excel.ipynb
+.claude/
